@@ -14,6 +14,5 @@ The solver is intended for educational purposes. For large inputs, you can switc
 2.  Enter the tiles in the format `top/bottom top/bottom ...`.
 3.  Set the maximum depth for the search.
 4.  Choose a Storage Mode:
-	- `In-Memory`: Fastest, but limited by JS heap (default not recommended for large inputs).
+	- `In-Memory`: Fastest; this is the default mode. It is limited by the JS heap and may run out of memory on very large problems.
 	- `IndexedDB (disk-backed)`: Slower, but can handle much larger problems by storing visited states on disk.
-5.  Click "Solve PCP".

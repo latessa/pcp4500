@@ -15,7 +15,7 @@ const resLength = document.getElementById('resLength');
 
 function getStorageMode() {
     const el = document.querySelector('input[name="storageMode"]:checked');
-    return el ? el.value : 'disk';
+    return el ? el.value : 'memory';
 }
 
 tilesInput.addEventListener('input', updateTilePreview);
@@ -227,13 +227,66 @@ let globalNodeCounter = 0;
 let lastYieldTime = 0;
 
 // Storage abstraction for visited transitions (transTable)
-function createStateStore(mode) {
-    if (mode === 'memory') return Promise.resolve(new InMemoryStateStore());
+async function createStateStore(mode) {
+    if (mode === 'memory') return new InMemoryStateStore();
     if (!('indexedDB' in window)) {
         statusDiv.textContent += '\nIndexedDB not available; falling back to in-memory.';
-        return Promise.resolve(new InMemoryStateStore());
+        return new InMemoryStateStore();
     }
-    return IndexedDBStateStore.create('pcp_solver', 'transitions');
+
+    // Create the on-disk IndexedDB store, then wrap with a small in-memory LRU cache
+    const idbStore = await IndexedDBStateStore.create('pcp_solver', 'transitions');
+    const DEFAULT_CACHE_SIZE = 1000; // number of entries to keep in RAM for faster lookups
+    statusDiv.textContent += `Caching ${DEFAULT_CACHE_SIZE} most-recent states in memory for speed.\n`;
+    return new LRUCacheStore(idbStore, DEFAULT_CACHE_SIZE);
+}
+
+/**
+ * LRUCacheStore wraps a delegate async key/value store and keeps a small in-memory LRU cache
+ * to reduce IndexedDB round-trips while bounding memory usage.
+ * Methods: get(key) -> value | undefined, set(key, value), clear().
+ */
+class LRUCacheStore {
+    constructor(delegate, maxEntries = 1000) {
+        this.delegate = delegate;
+        this.maxEntries = Math.max(1, Math.floor(maxEntries));
+        // Use Map to preserve insertion order: oldest first.
+        this.map = new Map();
+    }
+    async get(key) {
+        if (this.map.has(key)) {
+            const val = this.map.get(key);
+            // Move to most-recent
+            this.map.delete(key);
+            this.map.set(key, val);
+            return val;
+        }
+        const val = await this.delegate.get(key);
+        if (val !== undefined) {
+            this.map.set(key, val);
+            // Evict oldest if needed
+            if (this.map.size > this.maxEntries) {
+                const oldestKey = this.map.keys().next().value;
+                this.map.delete(oldestKey);
+            }
+        }
+        return val;
+    }
+    async set(key, value) {
+        // Update memory cache
+        if (this.map.has(key)) this.map.delete(key);
+        this.map.set(key, value);
+        if (this.map.size > this.maxEntries) {
+            const oldestKey = this.map.keys().next().value;
+            this.map.delete(oldestKey);
+        }
+        // Write-through to delegate (IndexedDB)
+        return this.delegate.set(key, value);
+    }
+    async clear() {
+        this.map.clear();
+        return this.delegate.clear();
+    }
 }
 
 class InMemoryStateStore {
