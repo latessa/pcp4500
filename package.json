@@ -1,0 +1,15 @@
+{
+  "name": "pcp-solver",
+  "version": "1.0.0",
+  "description": "Post Correspondence Problem Solver",
+  "main": "js/pcp_solver.js",
+  "scripts": {
+    "test": "eslint js/"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "eslint": "^8.0.0"
+  }
+}

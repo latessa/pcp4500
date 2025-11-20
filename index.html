@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PCP Solver</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <div class="container">
+        <header>
+            <h1>CSC 4500 PCP Solver</h1>
+            <p class="subtitle">Post Correspondence Problem Solver (not intended for memory intensive inputs)</p>
+        </header>
+
+        <div class="card">
+            <div class="form-group">
+                <label for="tilesInput">Tiles (Format: up/down up/down ...)</label>
+                <textarea id="tilesInput" rows="3" placeholder="e.g. a/aa bb/b a/bb">a/aa bb/b a/bb</textarea>
+                <div id="tilePreview" class="tile-preview"></div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <div class="form-group">
+                        <label for="maxDepth">Max Depth</label>
+                        <input type="number" id="maxDepth" value="20" min="1" max="100">
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="form-group">
+                        <label for="minDepth">Min Depth (Optional)</label>
+                        <input type="number" id="minDepth" value="0" min="0">
+                    </div>
+                </div>
+            </div>
+
+            <button id="solveBtn">Solve PCP</button>
+            <button id="stopBtn"
+                style="background-color: var(--error-color); margin-top: 1rem; display: none;">Stop</button>
+        </div>
+
+        <div id="resultContainer">
+            <div class="result-header">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                Solution Found!
+            </div>
+            <div class="result-section">
+                <span class="result-label">Sequence (Indices)</span>
+                <div id="resSequence" class="result-value"></div>
+            </div>
+            <div class="result-section">
+                <span class="result-label">Combined String (Length: <span id="resLength">0</span>)</span>
+                <div id="resString" class="result-value"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <label>Log / Status</label>
+            <div id="status">Ready to solve...</div>
+        </div>
+    </div>
+
+    <script src="js/pcp_solver.js"></script>
+</body>
+
+</html>
