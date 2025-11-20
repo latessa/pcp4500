@@ -41,6 +41,24 @@
                 </div>
             </div>
 
+            <div class="row">
+                <div class="col">
+                    <div class="form-group">
+                        <label>Storage Mode</label>
+                        <div class="radio-group" id="storageModeGroup">
+                            <label class="radio-option">
+                                <input type="radio" name="storageMode" value="disk" checked>
+                                <span class="radio-label">Disk-Backed (slower, less memory usage)</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="storageMode" value="memory">
+                                <span class="radio-label">In-Memory (faster, long problems may exhaust memory)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <button id="solveBtn">Solve PCP</button>
             <button id="stopBtn"
                 style="background-color: var(--error-color); margin-top: 1rem; display: none;">Stop</button>

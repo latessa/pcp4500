@@ -13,6 +13,11 @@ const resSequence = document.getElementById('resSequence');
 const resString = document.getElementById('resString');
 const resLength = document.getElementById('resLength');
 
+function getStorageMode() {
+    const el = document.querySelector('input[name="storageMode"]:checked');
+    return el ? el.value : 'disk';
+}
+
 tilesInput.addEventListener('input', updateTilePreview);
 solveBtn.addEventListener('click', startSolver);
 stopBtn.addEventListener('click', stopSolver);
@@ -76,7 +81,10 @@ async function startSolver() {
     resultContainer.style.display = 'none';
 
     try {
-        const result = await solvePCP(ups, downs, maxDepth, minDepth);
+        const storageMode = getStorageMode();
+        statusDiv.textContent += `Using ${storageMode === 'disk' ? 'IndexedDB (disk-backed)' : 'in-memory'} storage for visited states.\n`;
+
+        const result = await solvePCP(ups, downs, maxDepth, minDepth, storageMode);
         if (result.found) {
             statusDiv.textContent += `\nSolution found at depth ${result.path.length}.`;
             resultContainer.style.display = 'block';
@@ -107,18 +115,18 @@ async function startSolver() {
     }
 }
 
-async function solvePCP(ups, downs, maxDepth, minDepth) {
+async function solvePCP(ups, downs, maxDepth, minDepth, storageMode) {
     const numTiles = ups.length;
     const tileIndices = Array.from({ length: numTiles }, (_, i) => i);
 
-    let transTable = new Map();
+    const transTable = await createStateStore(storageMode);
 
     const startTime = performance.now();
 
     for (let limit = Math.max(1, minDepth); limit <= maxDepth; ++limit) {
         if (shouldStop) break;
 
-        transTable.clear();
+        await transTable.clear();
 
 
         const path = [];
@@ -195,7 +203,7 @@ async function dfsLimit(side, suff, depthLeft, path, ups, downs, tileIndices, tr
         }
 
         const stateKey = newSide + "|" + newSuff;
-        const existing = transTable.get(stateKey);
+        const existing = await transTable.get(stateKey);
         const rem = depthLeft - 1;
 
         if (existing) {
@@ -204,7 +212,7 @@ async function dfsLimit(side, suff, depthLeft, path, ups, downs, tileIndices, tr
             }
         }
 
-        transTable.set(stateKey, { depth: rem, pathLen: path.length });
+        await transTable.set(stateKey, { depth: rem, pathLen: path.length });
 
         path.push(i + 1);
         if (await dfsLimit(newSide, newSuff, depthLeft - 1, path, ups, downs, tileIndices, transTable, minDepth)) {
@@ -217,3 +225,80 @@ async function dfsLimit(side, suff, depthLeft, path, ups, downs, tileIndices, tr
 
 let globalNodeCounter = 0;
 let lastYieldTime = 0;
+
+// Storage abstraction for visited transitions (transTable)
+function createStateStore(mode) {
+    if (mode === 'memory') return Promise.resolve(new InMemoryStateStore());
+    if (!('indexedDB' in window)) {
+        statusDiv.textContent += '\nIndexedDB not available; falling back to in-memory.';
+        return Promise.resolve(new InMemoryStateStore());
+    }
+    return IndexedDBStateStore.create('pcp_solver', 'transitions');
+}
+
+class InMemoryStateStore {
+    constructor() {
+        this.map = new Map();
+    }
+    async get(key) {
+        return this.map.get(key);
+    }
+    async set(key, value) {
+        this.map.set(key, value);
+    }
+    async clear() {
+        this.map.clear();
+    }
+}
+
+class IndexedDBStateStore {
+    constructor(db, storeName) {
+        this.db = db;
+        this.storeName = storeName;
+    }
+    static create(dbName, storeName) {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open(dbName, 1);
+            req.onupgradeneeded = () => {
+                const db = req.result;
+                if (!db.objectStoreNames.contains(storeName)) {
+                    db.createObjectStore(storeName, { keyPath: 'key' });
+                }
+            };
+            req.onsuccess = () => {
+                resolve(new IndexedDBStateStore(req.result, storeName));
+            };
+            req.onerror = () => reject(req.error);
+        });
+    }
+    _tx(mode) {
+        return this.db.transaction(this.storeName, mode).objectStore(this.storeName);
+    }
+    async get(key) {
+        return new Promise((resolve, reject) => {
+            const store = this._tx('readonly');
+            const req = store.get(key);
+            req.onsuccess = () => {
+                const rec = req.result;
+                resolve(rec ? rec.value : undefined);
+            };
+            req.onerror = () => reject(req.error);
+        });
+    }
+    async set(key, value) {
+        return new Promise((resolve, reject) => {
+            const store = this._tx('readwrite');
+            const req = store.put({ key, value });
+            req.onsuccess = () => resolve();
+            req.onerror = () => reject(req.error);
+        });
+    }
+    async clear() {
+        return new Promise((resolve, reject) => {
+            const store = this._tx('readwrite');
+            const req = store.clear();
+            req.onsuccess = () => resolve();
+            req.onerror = () => reject(req.error);
+        });
+    }
+}

@@ -209,3 +209,39 @@ button:disabled {
 .tile-chip span.val {
     font-family: monospace;
 }
+
+/* Styled radio group for storage mode */
+.radio-group {
+    display: flex;
+    gap: 0.75rem;
+    flex-direction: column;
+}
+.radio-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    background-color: #0f172a;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    color: var(--text-primary);
+    user-select: none;
+}
+.radio-option input[type="radio"] {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--accent-color);
+    margin: 0;
+}
+.radio-option .radio-label {
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+.radio-option input[type="radio"]:checked + .radio-label {
+    /* Visual hint is handled by accent-color on the radio indicator */
+}
+
+@media (min-width: 640px) {
+    .radio-group { flex-direction: row; }
+}
